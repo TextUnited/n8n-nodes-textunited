@@ -1,6 +1,6 @@
 {
 	"name": "@textunited/n8n-nodes-textunited",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"description": "n8n community node to create and manage TextUnited translation projects",
 	"license": "MIT",
 	"homepage": "https://github.com/TextUnited/n8n-nodes-textunited",
