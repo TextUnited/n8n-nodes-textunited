@@ -1,3 +1,4 @@
 {
-	"remote": "github"
+	"remote": "github",
+	"tagPattern": "^[0-9]+.[0-9]+.[0-9]+$"
 }
