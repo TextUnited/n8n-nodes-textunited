@@ -2,10 +2,13 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { textUnitedApiRequest } from '../../shared/transport';
-import { parseJsonArrayParameter } from '../../shared/utils';
+import {
+	buildSegmentQualityEvalProcessSettings,
+	parseJsonArrayParameter,
+} from '../../shared/utils';
 
 const showOnlyForProjectCreateManaged = {
-	resource: ['project'],
+	resource: ['textBasedProject'],
 	operation: ['createManaged'],
 };
 
@@ -99,7 +102,7 @@ export const projectCreateManagedDescription: INodeProperties[] = [
 			show: showOnlyForProjectCreateManaged,
 		},
 		description:
-			'Languages the content should be translated into. At least one is required. Automatic translation is always requested; the agency handles staffing and any adaptive translation or manual team assignment is not allowed for this process.',
+			'Languages the content should be translated into. At least one is required. Automatic translation is always requested; the agency handles staffing and any adaptive translation or manual team assignment is not allowed for this process. Only one target language is currently supported — support for multiple target languages per project is planned for a future release.',
 		options: [
 			{
 				displayName: 'Language',
@@ -131,6 +134,17 @@ export const projectCreateManagedDescription: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Critical Translation',
+		name: 'criticalTranslation',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: showOnlyForProjectCreateManaged,
+		},
+		description:
+			'Whether TextUnited should act on the quality report. If enabled, any risks the report finds get a translator assigned automatically to fix them, then a new report is run — and if risks remain, the manager and client are emailed. If disabled, the project always finishes after machine translation even if the report finds risks (the report stays available to review).',
 	},
 	{
 		displayName: 'Specify Segments',
@@ -367,6 +381,13 @@ export async function createManagedProject(this: IExecuteFunctions): Promise<IDa
 		throw new NodeOperationError(this.getNode(), 'At least one target language must be added');
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+		);
+	}
+
 	const segments = items.map((_, i) => {
 		const content = this.getNodeParameter('content', i) as string;
 		const segmentCustomId = this.getNodeParameter('segmentCustomId', i, '') as string;
@@ -394,6 +415,9 @@ export async function createManagedProject(this: IExecuteFunctions): Promise<IDa
 		domainId: domainId || undefined,
 		sourceLanguageCode,
 		processId: 1,
+		processSettings: buildSegmentQualityEvalProcessSettings(
+			this.getNodeParameter('criticalTranslation', 0, false) as boolean,
+		),
 		targetLanguages,
 		segments,
 		...additionalFields,
@@ -429,6 +453,14 @@ export async function createManagedProjectForItem(
 		});
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+			{ itemIndex: i },
+		);
+	}
+
 	let segments: IDataObject[];
 
 	if (segmentsMode === 'json') {
@@ -457,6 +489,9 @@ export async function createManagedProjectForItem(
 		domainId: domainId || undefined,
 		sourceLanguageCode,
 		processId: 1,
+		processSettings: buildSegmentQualityEvalProcessSettings(
+			this.getNodeParameter('criticalTranslation', i, false) as boolean,
+		),
 		targetLanguages,
 		segments,
 		...additionalFields,

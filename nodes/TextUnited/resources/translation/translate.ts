@@ -5,7 +5,7 @@ import { textUnitedApiRequest } from '../../shared/transport';
 import { parseJsonArrayParameter } from '../../shared/utils';
 
 const showOnlyForTranslationTranslate = {
-	resource: ['translation'],
+	resource: ['instantTranslation'],
 	operation: ['translate'],
 };
 

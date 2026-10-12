@@ -3,7 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { textUnitedApiRequest } from '../../shared/transport';
 
 const showOnlyForProjectGet = {
-	resource: ['project'],
+	resource: ['generalProject'],
 	operation: ['get'],
 };
 

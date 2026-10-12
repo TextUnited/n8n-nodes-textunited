@@ -5,7 +5,7 @@ import { textUnitedApiRequest } from '../../shared/transport';
 import { parseJsonArrayParameter } from '../../shared/utils';
 
 const showOnlyForProjectCreateManagedTranslation = {
-	resource: ['project'],
+	resource: ['textBasedProject'],
 	operation: ['createManagedTranslation'],
 };
 
@@ -13,7 +13,6 @@ function buildTargetLanguages(targetLanguagesUi: IDataObject): IDataObject[] {
 	return ((targetLanguagesUi.language as IDataObject[]) ?? []).map((language) => ({
 		targetLanguageCode: language.targetLanguageCode,
 		styleGuideId: language.styleGuideId || undefined,
-		state: 'InProgress',
 		managedProject: true,
 		serviceTranslation: true,
 		serviceProofreading: false,
@@ -99,7 +98,7 @@ export const projectCreateManagedTranslationDescription: INodeProperties[] = [
 			show: showOnlyForProjectCreateManagedTranslation,
 		},
 		description:
-			'Languages the content should be translated into. At least one is required. The agency handles staffing; a manually assigned team is not offered for this project type.',
+			'Languages the content should be translated into. At least one is required. The agency handles staffing; a manually assigned team is not offered for this project type. Only one target language is currently supported — support for multiple target languages per project is planned for a future release.',
 		options: [
 			{
 				displayName: 'Language',
@@ -366,6 +365,13 @@ export async function createManagedTranslationProject(
 		throw new NodeOperationError(this.getNode(), 'At least one target language must be added');
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+		);
+	}
+
 	const segments = items.map((_, i) => {
 		const content = this.getNodeParameter('content', i) as string;
 		const segmentCustomId = this.getNodeParameter('segmentCustomId', i, '') as string;
@@ -392,6 +398,7 @@ export async function createManagedTranslationProject(
 		endDateUtc,
 		domainId: domainId || undefined,
 		sourceLanguageCode,
+		processId: 3,
 		targetLanguages,
 		segments,
 		...additionalFields,
@@ -427,6 +434,14 @@ export async function createManagedTranslationProjectForItem(
 		});
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+			{ itemIndex: i },
+		);
+	}
+
 	let segments: IDataObject[];
 
 	if (segmentsMode === 'json') {
@@ -454,6 +469,7 @@ export async function createManagedTranslationProjectForItem(
 		endDateUtc,
 		domainId: domainId || undefined,
 		sourceLanguageCode,
+		processId: 3,
 		targetLanguages,
 		segments,
 		...additionalFields,

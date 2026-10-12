@@ -5,7 +5,7 @@ import { textUnitedApiRequest } from '../../shared/transport';
 import { parseJsonArrayParameter } from '../../shared/utils';
 
 const showOnlyForProjectCreateInHouseTranslation = {
-	resource: ['project'],
+	resource: ['textBasedProject'],
 	operation: ['createInHouseTranslation'],
 };
 
@@ -24,7 +24,6 @@ function buildTargetLanguages(targetLanguagesUi: IDataObject): IDataObject[] {
 			targetLanguageCode: language.targetLanguageCode,
 			styleGuideId: language.styleGuideId || undefined,
 			team: team.length > 0 ? team : undefined,
-			state: 'InProgress',
 			managedProject: false,
 			serviceTranslation: true,
 			serviceProofreading: language.serviceProofreading,
@@ -110,7 +109,8 @@ export const projectCreateInHouseTranslationDescription: INodeProperties[] = [
 		displayOptions: {
 			show: showOnlyForProjectCreateInHouseTranslation,
 		},
-		description: 'Languages the content should be translated into. At least one is required.',
+		description:
+			'Languages the content should be translated into. At least one is required. Only one target language is currently supported — support for multiple target languages per project is planned for a future release.',
 		options: [
 			{
 				displayName: 'Language',
@@ -444,6 +444,13 @@ export async function createInHouseTranslationProject(
 		throw new NodeOperationError(this.getNode(), 'At least one target language must be added');
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+		);
+	}
+
 	const segments = items.map((_, i) => {
 		const content = this.getNodeParameter('content', i) as string;
 		const segmentCustomId = this.getNodeParameter('segmentCustomId', i, '') as string;
@@ -470,6 +477,7 @@ export async function createInHouseTranslationProject(
 		endDateUtc,
 		domainId: domainId || undefined,
 		sourceLanguageCode,
+		processId: 4,
 		targetLanguages,
 		segments,
 		...additionalFields,
@@ -505,6 +513,14 @@ export async function createInHouseTranslationProjectForItem(
 		});
 	}
 
+	if (targetLanguages.length > 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Only one target language is currently supported. Support for multiple target languages per project is planned for a future release.',
+			{ itemIndex: i },
+		);
+	}
+
 	let segments: IDataObject[];
 
 	if (segmentsMode === 'json') {
@@ -532,6 +548,7 @@ export async function createInHouseTranslationProjectForItem(
 		endDateUtc,
 		domainId: domainId || undefined,
 		sourceLanguageCode,
+		processId: 4,
 		targetLanguages,
 		segments,
 		...additionalFields,

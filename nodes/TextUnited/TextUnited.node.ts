@@ -11,16 +11,27 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { convertFiles, fileFields, fileOperations } from './resources/file';
+import {
+	downloadMachineTranslation,
+	instantTranslationFields,
+	instantTranslationOperations,
+	startMachineTranslation,
+	translateSegments,
+	translateSegmentsForItem,
+} from './resources/instantTranslation';
 import {
 	cancelProcess,
-	finishGlossary,
 	getProcess,
 	processFields,
 	processOperations,
 	retryProcess,
-	submitClientReview,
 } from './resources/process';
 import {
+	createFromFilesInHouseProject,
+	createFromFilesInHouseQualityEvalProject,
+	createFromFilesManagedProject,
+	createFromFilesManagedQualityEvalProject,
 	createInHouseProject,
 	createInHouseProjectForItem,
 	createInHouseTranslationProject,
@@ -29,18 +40,12 @@ import {
 	createManagedProjectForItem,
 	createManagedTranslationProject,
 	createManagedTranslationProjectForItem,
-	getAllProjects,
+	downloadTranslatedFiles,
 	getProject,
 	getProjectSegments,
 	projectFields,
 	projectOperations,
 } from './resources/project';
-import {
-	translateSegments,
-	translateSegmentsForItem,
-	translationFields,
-	translationOperations,
-} from './resources/translation';
 import {
 	getDomains,
 	getLanguages,
@@ -78,24 +83,38 @@ export class TextUnited implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
+						name: 'File-Based Project',
+						value: 'fileBasedProject',
+					},
+					{
+						name: 'General Project',
+						value: 'generalProject',
+					},
+					{
+						name: 'Instant Translation',
+						value: 'instantTranslation',
+					},
+					{
 						name: 'Process',
 						value: 'process',
 					},
 					{
-						name: 'Project',
-						value: 'project',
-					},
-					{
-						name: 'Translation',
-						value: 'translation',
+						name: 'Text-Based Project',
+						value: 'textBasedProject',
 					},
 				],
-				default: 'project',
+				default: 'textBasedProject',
 			},
+			...fileOperations,
+			...fileFields,
 			...projectOperations,
 			...projectFields,
-			...translationOperations,
-			...translationFields,
+			...instantTranslationOperations,
+			...instantTranslationFields,
 			...processOperations,
 			...processFields,
 		],
@@ -142,14 +161,23 @@ export class TextUnited implements INodeType {
 			string,
 			Record<string, (this: IExecuteFunctions) => Promise<IDataObject | IDataObject[]>>
 		> = {
-			project: {
+			textBasedProject: {
 				createManagedTranslation: createManagedTranslationProject,
 				createInHouseTranslation: createInHouseTranslationProject,
 				createManaged: createManagedProject,
 				createInHouse: createInHouseProject,
 			},
-			translation: {
+			fileBasedProject: {
+				createFromFilesManaged: createFromFilesManagedProject,
+				createFromFilesManagedQualityEval: createFromFilesManagedQualityEvalProject,
+				createFromFilesInHouse: createFromFilesInHouseProject,
+				createFromFilesInHouseQualityEval: createFromFilesInHouseQualityEvalProject,
+			},
+			instantTranslation: {
 				translate: translateSegments,
+			},
+			file: {
+				convert: convertFiles,
 			},
 		};
 
@@ -187,28 +215,40 @@ export class TextUnited implements INodeType {
 			try {
 				let responseData: IDataObject | IDataObject[];
 
-				if (resource === 'project' && operation === 'createManagedTranslation') {
+				if (resource === 'textBasedProject' && operation === 'createManagedTranslation') {
 					responseData = await createManagedTranslationProjectForItem.call(this, i);
-				} else if (resource === 'project' && operation === 'createInHouseTranslation') {
+				} else if (resource === 'textBasedProject' && operation === 'createInHouseTranslation') {
 					responseData = await createInHouseTranslationProjectForItem.call(this, i);
-				} else if (resource === 'project' && operation === 'createManaged') {
+				} else if (resource === 'textBasedProject' && operation === 'createManaged') {
 					responseData = await createManagedProjectForItem.call(this, i);
-				} else if (resource === 'project' && operation === 'createInHouse') {
+				} else if (resource === 'textBasedProject' && operation === 'createInHouse') {
 					responseData = await createInHouseProjectForItem.call(this, i);
-				} else if (resource === 'project' && operation === 'get') {
-					responseData = await getProject.call(this, i);
-				} else if (resource === 'project' && operation === 'getAll') {
-					responseData = await getAllProjects.call(this, i);
-				} else if (resource === 'project' && operation === 'getSegments') {
+				} else if (resource === 'textBasedProject' && operation === 'getSegments') {
 					responseData = await getProjectSegments.call(this, i);
-				} else if (resource === 'translation' && operation === 'translate') {
+				} else if (resource === 'generalProject' && operation === 'get') {
+					responseData = await getProject.call(this, i);
+				} else if (resource === 'fileBasedProject' && operation === 'downloadTranslatedFiles') {
+					// Unlike every other operation, this one needs to attach binary
+					// data (the downloaded ZIP) to the output item, so it builds its
+					// own INodeExecutionData directly instead of returning a plain
+					// IDataObject for the generic returnJsonArray() path below.
+					returnData.push(await downloadTranslatedFiles.call(this, i));
+					continue;
+				} else if (resource === 'instantTranslation' && operation === 'startMachineTranslation') {
+					responseData = await startMachineTranslation.call(this, i);
+				} else if (
+					resource === 'instantTranslation' &&
+					operation === 'downloadMachineTranslation'
+				) {
+					// Same reason as File-Based Project → Download Translated Files
+					// above: this is another operation that attaches binary data, so
+					// it builds its own INodeExecutionData directly.
+					returnData.push(await downloadMachineTranslation.call(this, i));
+					continue;
+				} else if (resource === 'instantTranslation' && operation === 'translate') {
 					responseData = await translateSegmentsForItem.call(this, i);
 				} else if (resource === 'process' && operation === 'get') {
 					responseData = await getProcess.call(this, i);
-				} else if (resource === 'process' && operation === 'finishGlossary') {
-					responseData = await finishGlossary.call(this, i);
-				} else if (resource === 'process' && operation === 'submitClientReview') {
-					responseData = await submitClientReview.call(this, i);
 				} else if (resource === 'process' && operation === 'retry') {
 					responseData = await retryProcess.call(this, i);
 				} else if (resource === 'process' && operation === 'cancel') {
