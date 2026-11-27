@@ -2,7 +2,7 @@
 
 This is an n8n community node that lets you use [TextUnited](https://www.textunited.com/) in your n8n workflows.
 
-TextUnited is a translation management platform. This node currently covers **creating and reading translation projects** from n8n — further operations (updating, deleting, translation progress, comments, etc.) are planned; see [Roadmap](#roadmap).
+TextUnited is a translation management platform. This node supports instant text and file translation, creating and reading text-based and file-based translation projects, and managing supported automated processes. See [Operations](#operations) for available actions and [Roadmap](#roadmap) for planned additions.
 
 [n8n](https://n8n.io/) is a fair-code licensed workflow automation platform.
 
@@ -186,7 +186,6 @@ This node intentionally ships with a focused surface first. Planned follow-ups:
 - Add comments to segments
 - Per-segment language-specific notes on create
 - Restore **Process → Finish Glossary** and **Submit Client Review**, needed to advance a Quality Eval process past `WaitingForClientReview` (and `WaitingForGlossaryTranslation`, if a glossary-waiting option is ever exposed)
-- A file-based Quality Eval flow (**File-Based Project** currently only offers plain translation, no automated process)
 
 ## Resources
 
