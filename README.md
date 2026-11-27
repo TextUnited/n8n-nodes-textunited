@@ -31,6 +31,8 @@ See TextUnited's [authentication reference](https://textunited.readme.io/referen
 
 ## Operations
 
+The node interface abbreviates “Evaluation” as “Eval” in some operation names.
+
 This node splits translation work into six resources, by what you're translating and how:
 
 - **File** – prepare uploaded files for translation
@@ -38,7 +40,7 @@ This node splits translation work into six resources, by what you're translating
 - **Text-Based Project** – create/read a TextUnited project from content you pass in directly
 - **General Project** – look up any project regardless of how it was created
 - **Instant Translation** – translate content or files immediately, without creating a project at all
-- **Process** – track and drive the automated Quality Eval process a project-creation call started
+- **Process** – track and drive the automated Quality Evaluation process a project-creation call started
 
 ### File
 
@@ -50,12 +52,12 @@ Creates a project from files already prepared with **File → Convert**, referen
 
 - **Create From Files (In-House)** – every target language staffed in-house, with an optional per-language **Team**
 - **Create From Files (Managed)** – every target language handed to the same agency; **Team** is not offered, since agency allocation overrides it
-- **Create From Files (In-House Quality Eval)** / **(Managed Quality Eval)** – the same two variants, but they start TextUnited's `InHouseFileProjectQualityEval` / `ManagedFileProjectQualityEval` process: after machine translation a quality report is produced, and **Critical Translation** decides what happens next (see below). The process never waits for a glossary to be translated (`PrepareGlossaryTranslation` is always `false`) — it goes straight to machine translation.
+- **Create From Files (In-House Quality Evaluation)** / **(Managed Quality Evaluation)** – the same two variants, but they start TextUnited's `InHouseFileProjectQualityEval` / `ManagedFileProjectQualityEval` process: after machine translation a quality report is produced, and **Critical Translation** decides what happens next (see below). The process never waits for a glossary to be translated (`PrepareGlossaryTranslation` is always `false`) — it goes straight to machine translation.
 - **Download Translated Files** – downloads the finished project's translated files as a ZIP (`GET /projects/{projectId}/documents/translated`), decoding the response's base64 `content` into binary data on the output item. Throws a clear error if the files aren't ready yet (no `content` in the response). See [Example Workflows](#example-workflows) below for returning it directly to a webhook caller.
 
-All four Create variants call `POST /projects/automation/multilingual`; they differ in `ProcessName` (and, for the Quality Eval ones, a `ProcessSettings` block). Waiting for the result and downloading it work the same as for the plain variants — wait for the project to finish (track it via **Process → Get**, by project ID or process GUID), then fetch it with **Download Translated Files**.
+All four Create variants call `POST /projects/automation/multilingual`; they differ in `ProcessName` (and, for the Quality Evaluation ones, a `ProcessSettings` block). Waiting for the result and downloading it work the same as for the plain variants — wait for the project to finish (track it via **Process → Get**, by project ID or process GUID), then fetch it with **Download Translated Files**.
 
-**Critical Translation** (all four Quality Eval variants, file-based and text-based; off by default) sets `ProcessSettings.AfterQualityReport` (`processSettings.afterQualityReport` on the text-based API):
+**Critical Translation** (all four Quality Evaluation variants, file-based and text-based; off by default) sets `ProcessSettings.AfterQualityReport` (`processSettings.afterQualityReport` on the text-based API):
 
 - **On** → `FollowReport`: if the quality report finds risks, TextUnited assigns a translator to fix them automatically and re-runs the report afterwards. No risks → the project completes immediately; risks still present after the corrections → the manager and client are emailed and the process closes.
 - **Off** → `AlwaysComplete`: the project always ends after machine translation, even if the report finds risks. The report stays available to review.
@@ -66,8 +68,8 @@ Creates a project from content (segments) you pass in directly — no file uploa
 
 - **Managed Translation Project** – every target language flagged as agency-managed (`managedProject: true`), no automated process, and no team assignment (the agency handles staffing)
 - **In-House Translation Project** – every target language flagged as staffed in-house (`managedProject: false`), no automated process, with an optional per-language **Team** and a **Proofreading** toggle
-- **Create (Managed Quality Eval)** – starts TextUnited's Managed Project Quality Eval process (`processId: 1`): the project is allocated to an agency, which runs terminology-first automatic translation followed by a quality evaluation. A curated operation like the others above — start date is set to now automatically, and a manually assigned **Team** is not offered at all, since TextUnited's own agency allocation overrides (and actively rejects) one. Automatic translation, translation service, and several other fields are likewise fixed rather than exposed. Has the same **Critical Translation** toggle as the file-based Quality Eval variants (sent as `processSettings.afterQualityReport`).
-- **Create (In-House Quality Eval)** – same process, but staffed in-house (`processId: 2`) instead of by an agency: if no **Team** is given, TextUnited assigns a translator from your own Engagement team (matched by language pair), or the project creator if none match. A team can optionally be assigned per target language instead — TextUnited requires it for either every target language or none, and each one must include at least one member with the Translator role. A curated operation like the two Translation Project ones above: start date is set to now automatically, and several fields (automatic/adaptive translation, translation service, description, instant translation) are fixed rather than exposed. Has the same **Critical Translation** toggle as the file-based Quality Eval variants (sent as `processSettings.afterQualityReport`).
+- **Create (Managed Quality Evaluation)** – starts TextUnited's Managed Project Quality Evaluation process (`processId: 1`): the project is allocated to an agency, which runs terminology-first automatic translation followed by a quality evaluation. A curated operation like the others above — start date is set to now automatically, and a manually assigned **Team** is not offered at all, since TextUnited's own agency allocation overrides (and actively rejects) one. Automatic translation, translation service, and several other fields are likewise fixed rather than exposed. Has the same **Critical Translation** toggle as the file-based Quality Evaluation variants (sent as `processSettings.afterQualityReport`).
+- **Create (In-House Quality Evaluation)** – same process, but staffed in-house (`processId: 2`) instead of by an agency: if no **Team** is given, TextUnited assigns a translator from your own Engagement team (matched by language pair), or the project creator if none match. A team can optionally be assigned per target language instead — TextUnited requires it for either every target language or none, and each one must include at least one member with the Translator role. A curated operation like the two Translation Project ones above: start date is set to now automatically, and several fields (automatic/adaptive translation, translation service, description, instant translation) are fixed rather than exposed. Has the same **Critical Translation** toggle as the file-based Quality Evaluation variants (sent as `processSettings.afterQualityReport`).
 - **Get Segments (Segments Project)** – fetches a project's segments, either by its TextUnited ID (`GET /segments/projects/{id}/segments`) or by your own custom ID (`GET /segments/projects/custom/{customId}/segments`)
 
 All four Create variants call `POST /segments/projects`, and all four offer **Segments** via a **Specify Segments** mode — see below.
@@ -99,7 +101,7 @@ Every operation above that has a **Segments** field offers the same **Specify Se
 
 ### Process
 
-Two things return a `processGuid` to track here: creating a project via **Text-Based Project → Create (Managed Quality Eval)** / **Create (In-House Quality Eval)**, or starting a translation via **Instant Translation → Start Machine Translation**.
+Two things return a `processGuid` to track here: creating a project via **Text-Based Project → Create (Managed Quality Evaluation)** / **Create (In-House Quality Evaluation)**, or starting a translation via **Instant Translation → Start Machine Translation**.
 
 - **Get** – fetches the current status, either by the process's own GUID (`GET /ProcessManagement/processes/{processGuid}`) or by the project's ID (`GET /ProcessManagement/processes/project/{projectId}`). The response's `state` field tells you what's happening — see below.
 - **Retry** – resumes a process whose `state` ends in `Failed` (`POST /ProcessManagement/processes/{processGuid}/retry`)
@@ -116,15 +118,15 @@ Built and tested against n8n's current node API version (`n8nNodesApiVersion: 1`
 1. Add a **TextUnited** node to your workflow and select the **TextUnited API** credential.
 2. Pick a Resource:
    - **File → Convert**: upload files to prepare them, before either a File-Based Project create operation or Instant Translation's file-based operations.
-   - **File-Based Project → Create From Files (In-House)** / **(Managed)** (or their **Quality Eval** versions): reference the **Document Batch ID** from a Convert run.
+   - **File-Based Project → Create From Files (In-House)** / **(Managed)** (or their **Quality Evaluation** versions): reference the **Document Batch ID** from a Convert run.
    - **File-Based Project → Download Translated Files**: fetch a finished project's translated files as a ZIP.
    - **Text-Based Project → Managed Translation Project** / **In-House Translation Project**: fill in the project name, end date, source language, at least one target language. No automated process is started; the start date is set to now automatically.
-   - **Text-Based Project → Create (Managed Quality Eval)** / **Create (In-House Quality Eval)**: similar core fields, but TextUnited also starts a quality-evaluation process — track it afterwards via the **Process** resource using the `processGuid` from the response.
+   - **Text-Based Project → Create (Managed Quality Evaluation)** / **Create (In-House Quality Evaluation)**: similar core fields, but TextUnited also starts a quality-evaluation process — track it afterwards via the **Process** resource using the `processGuid` from the response.
    - **Text-Based Project → Get Segments (Segments Project)**: pick whether to look the project up by its TextUnited ID or your own custom ID, and enter the value.
    - **General Project → Get**: same ID lookup, for a single project regardless of how it was created.
    - **Instant Translation → Translate Instantly**: pick a source language and at least one target language. No project is created; the translated content comes back directly.
    - **Instant Translation → Start Machine Translation** / **Download Machine Translation**: the file-based equivalent, referencing a Convert run's **Document Batch ID**; track progress via **Process → Get**.
-   - **Process → Get / Retry / Cancel**: drive a process started by a Quality Eval create operation or Start Machine Translation.
+   - **Process → Get / Retry / Cancel**: drive a process started by a Quality Evaluation create operation or Start Machine Translation.
 3. On any operation with a **Segments** field, decide how to specify them via **Specify Segments** (see above) — the default expects one input item per piece of content; switch to **Define Below** or **Using JSON** for a fixed list evaluated once per input item.
 4. Run the node.
 
@@ -144,9 +146,9 @@ A common pattern: turn each row of a spreadsheet (or CRM export, ticket queue, e
 
 ### Start a quality-evaluation process and react to each stage
 
-TextUnited's Quality Eval flow moves through several `state` values. **Process** currently only exposes **Get**, **Retry**, and **Cancel** — a process that reaches `WaitingForClientReview` has to be advanced outside this node (e.g. directly in TextUnited) until that action is added back. Processes started by this node never wait for a glossary (they go straight to machine translation), so `WaitingForGlossaryTranslation` shouldn't come up.
+TextUnited's Quality Evaluation flow moves through several `state` values. **Process** currently only exposes **Get**, **Retry**, and **Cancel** — a process that reaches `WaitingForClientReview` has to be advanced outside this node (e.g. directly in TextUnited) until that action is added back. Processes started by this node never wait for a glossary (they go straight to machine translation), so `WaitingForGlossaryTranslation` shouldn't come up.
 
-1. **TextUnited → Text-Based Project → Create (Managed Quality Eval)** (or **In-House Quality Eval**) — creates the project and kicks off the process; note the response's `processGuid`.
+1. **TextUnited → Text-Based Project → Create (Managed Quality Evaluation)** (or **In-House Quality Evaluation**) — creates the project and kicks off the process; note the response's `processGuid`.
 2. **TextUnited → Process → Get** — using that `processGuid`, on a schedule (e.g. a **Schedule Trigger** every 15 minutes) or triggered by a webhook from your own systems.
 3. **IF** node branching on the response's `state` field:
    - a `*Failed` state → **Process → Retry**, or **Process → Cancel** to stop it entirely.
@@ -185,7 +187,7 @@ This node intentionally ships with a focused surface first. Planned follow-ups:
 - Get a project's translations and progress (segments are already covered by **Text-Based Project → Get Segments (Segments Project)**)
 - Add comments to segments
 - Per-segment language-specific notes on create
-- Restore **Process → Finish Glossary** and **Submit Client Review**, needed to advance a Quality Eval process past `WaitingForClientReview` (and `WaitingForGlossaryTranslation`, if a glossary-waiting option is ever exposed)
+- Restore **Process → Finish Glossary** and **Submit Client Review**, needed to advance a Quality Evaluation process past `WaitingForClientReview` (and `WaitingForGlossaryTranslation`, if a glossary-waiting option is ever exposed)
 
 ## Resources
 
